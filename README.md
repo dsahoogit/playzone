@@ -18,6 +18,22 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
+## MongoDB deployment
+
+The app uses MongoDB when `MONGODB_URI` is configured and keeps the existing JSON files as a local-development fallback otherwise. The document fields remain the same as the JSON records.
+
+1. Create a free MongoDB Atlas cluster and database user.
+2. Copy `.env.example` to `.env.local` and set `MONGODB_URI` and `MONGODB_DB`.
+3. Import the existing local data once:
+
+```bash
+npm run migrate:mongo
+```
+
+4. Add the same variables to the Vercel project environment settings and deploy.
+
+The local `public/uploads` directory is not persistent on Vercel. Configure an object-storage provider such as Cloudinary or Cloudflare R2 for profile and team images before relying on uploads in production.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

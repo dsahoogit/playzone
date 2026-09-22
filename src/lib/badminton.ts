@@ -1,6 +1,4 @@
 import crypto from "node:crypto";
-import { promises as fs } from "node:fs";
-import path from "node:path";
 import {
   addBadmintonPoint,
   createBadmintonScoreState,
@@ -12,6 +10,7 @@ import {
   type BadmintonScoreState,
   DEFAULT_BADMINTON_RULES,
 } from "./badminton-scoring";
+import { readStoredArray, writeStoredArray } from "./mongo";
 
 export type BadmintonFormat = "knockout" | "round-robin" | "group-knockout";
 export type BadmintonStatus = "draft" | "registration-open" | "registration-closed" | "in-progress" | "completed" | "cancelled";
@@ -33,10 +32,8 @@ export interface BadmintonTournament {
   scorerIds: string[]; players: BadmintonPlayer[]; pairs: BadmintonPair[]; events: BadmintonEvent[]; matches: BadmintonMatch[]; audit: BadmintonAudit[]; createdAt: string;
 }
 
-const file = path.join(process.cwd(), "data", "badminton.json");
 async function readAll(): Promise<BadmintonTournament[]> {
-  try {
-    const tournaments = JSON.parse(await fs.readFile(file, "utf8")) as BadmintonTournament[];
+  const tournaments = await readStoredArray<BadmintonTournament>("badminton", "badminton.json");
     return tournaments.map((tournament) => {
       const legacy = tournament as BadmintonTournament & { eventTypes?: BadmintonEventType[] };
       const eventTypes = legacy.eventTypes ?? [];
@@ -50,9 +47,8 @@ async function readAll(): Promise<BadmintonTournament[]> {
       players: (tournament.players ?? []).filter((player) => /^SMPL-[A-Z]\d{3}$/.test(player.id) && player.name.trim().length > 0),
       };
     });
-  } catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return []; throw error; }
 }
-async function writeAll(items: BadmintonTournament[]) { await fs.mkdir(path.dirname(file), { recursive: true }); await fs.writeFile(file, `${JSON.stringify(items, null, 2)}\n`, "utf8"); }
+async function writeAll(items: BadmintonTournament[]) { await writeStoredArray("badminton", "badminton.json", items); }
 function nextId(prefix: string, ids: string[]): string { const max = ids.reduce((value, id) => Math.max(value, Number(id.split("-").pop()) || 0), 0); return `${prefix}-${String(max + 1).padStart(3, "0")}`; }
 function audit(t: BadmintonTournament, userId: string, action: string, previous?: unknown, next?: unknown) { t.audit.push({ id: crypto.randomUUID(), userId, action, at: new Date().toISOString(), previous, next }); }
 

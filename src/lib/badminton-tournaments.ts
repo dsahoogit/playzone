@@ -1,6 +1,5 @@
-import { promises as fs } from "node:fs";
-import path from "node:path";
 import crypto from "node:crypto";
+import { readStoredArray, writeStoredArray } from "./mongo";
 
 // Badminton-specific tournament, court, and match types
 // Extends the cricket tournament concept to support multiple courts and rally-point scoring
@@ -83,22 +82,12 @@ export interface BadmintonTournament {
   status: "scheduled" | "live" | "completed";
 }
 
-const dataDir = path.join(process.cwd(), "data");
-const dataFile = path.join(dataDir, "badminton-tournaments.json");
-
 async function readAll(): Promise<BadmintonTournament[]> {
-  try {
-    const raw = await fs.readFile(dataFile, "utf8");
-    return JSON.parse(raw) as BadmintonTournament[];
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
-    throw error;
-  }
+  return readStoredArray<BadmintonTournament>("badmintonTournaments", "badminton-tournaments.json");
 }
 
 async function writeAll(items: BadmintonTournament[]): Promise<void> {
-  await fs.mkdir(dataDir, { recursive: true });
-  await fs.writeFile(dataFile, `${JSON.stringify(items, null, 2)}\n`, "utf8");
+  await writeStoredArray("badmintonTournaments", "badminton-tournaments.json", items);
 }
 
 // ===== TOURNAMENT CRUD =====

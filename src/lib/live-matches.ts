@@ -1,5 +1,3 @@
-import { promises as fs } from "node:fs";
-import path from "node:path";
 import {
   computeMatch,
   ballsToOvers,
@@ -11,23 +9,14 @@ import {
   type ComputedMatch,
 } from "./live-scoring";
 import { addMatchToTournament, type Match } from "./tournaments";
-
-const dataDir = path.join(process.cwd(), "data");
-const dataFile = path.join(dataDir, "live-matches.json");
+import { readStoredArray, writeStoredArray } from "./mongo";
 
 async function readAll(): Promise<LiveMatch[]> {
-  try {
-    const raw = await fs.readFile(dataFile, "utf8");
-    return JSON.parse(raw) as LiveMatch[];
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
-    throw error;
-  }
+  return readStoredArray<LiveMatch>("liveMatches", "live-matches.json");
 }
 
 async function writeAll(items: LiveMatch[]): Promise<void> {
-  await fs.mkdir(dataDir, { recursive: true });
-  await fs.writeFile(dataFile, `${JSON.stringify(items, null, 2)}\n`, "utf8");
+  await writeStoredArray("liveMatches", "live-matches.json", items);
 }
 
 export async function listLiveMatchesForTournament(

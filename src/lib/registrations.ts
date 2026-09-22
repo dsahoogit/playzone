@@ -1,7 +1,6 @@
-import { promises as fs } from "node:fs";
-import path from "node:path";
 import type { RegistrationInput } from "./validation";
 import { appConfig } from "./config";
+import { readStoredArray, writeStoredArray } from "./mongo";
 
 export interface RegistrationRecord extends RegistrationInput {
   id: string;
@@ -23,22 +22,12 @@ export function toPublic(record: RegistrationRecord): PublicPlayer {
 
 // Simple JSON-file storage to get started. Swap this module for a real database
 // (Postgres, MongoDB, Supabase, etc.) later without touching the API route.
-const dataDir = path.join(process.cwd(), "data");
-const dataFile = path.join(dataDir, "registrations.json");
-
 async function readAll(): Promise<RegistrationRecord[]> {
-  try {
-    const raw = await fs.readFile(dataFile, "utf8");
-    return JSON.parse(raw) as RegistrationRecord[];
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
-    throw error;
-  }
+  return readStoredArray<RegistrationRecord>("registrations", "registrations.json");
 }
 
 async function writeAll(records: RegistrationRecord[]): Promise<void> {
-  await fs.mkdir(dataDir, { recursive: true });
-  await fs.writeFile(dataFile, `${JSON.stringify(records, null, 2)}\n`, "utf8");
+  await writeStoredArray("registrations", "registrations.json", records);
 }
 
 export async function isMobileRegistered(mobile: string): Promise<boolean> {
