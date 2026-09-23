@@ -7,13 +7,18 @@ const databaseName = process.env.MONGODB_DB ?? "cricarena";
 
 declare global {
   var __cricarenaMongoClient: MongoClient | undefined;
+  var __cricarenaMongoConnect: Promise<MongoClient> | undefined;
 }
 
 async function getCollection(name: string): Promise<Collection<Document>> {
   if (!mongoUri) throw new Error("MONGODB_URI is not configured");
   const client = globalThis.__cricarenaMongoClient ?? new MongoClient(mongoUri);
   globalThis.__cricarenaMongoClient = client;
-  await client.connect();
+  globalThis.__cricarenaMongoConnect ??= client.connect().catch((error) => {
+    globalThis.__cricarenaMongoConnect = undefined;
+    throw error;
+  });
+  await globalThis.__cricarenaMongoConnect;
   return client.db(databaseName).collection(name);
 }
 
@@ -41,8 +46,25 @@ export async function writeStoredArray<T>(
 ): Promise<void> {
   if (mongoUri) {
     const collection = await getCollection(collectionName);
-    await collection.deleteMany({});
-    if (items.length > 0) await collection.insertMany(items as Document[]);
+    const recordsWithIds = items.filter(
+      (item): item is T & Document & { id: string } =>
+        typeof item === "object" && item !== null && "id" in item && typeof item.id === "string",
+    );
+    if (recordsWithIds.length === items.length) {
+      const ids = recordsWithIds.map((item) => item.id);
+      await collection.deleteMany({ id: { $nin: ids } });
+      for (const item of recordsWithIds) {
+        try {
+          await collection.replaceOne({ id: item.id }, item, { upsert: true });
+        } catch (error) {
+          if ((error as { code?: number }).code !== 11000) throw error;
+          await collection.replaceOne({ id: item.id }, item);
+        }
+      }
+    } else {
+      await collection.deleteMany({});
+      if (items.length > 0) await collection.insertMany(items as Document[]);
+    }
     return;
   }
 
