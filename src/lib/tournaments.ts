@@ -1,5 +1,4 @@
-import { promises as fs } from "node:fs";
-import path from "node:path";
+import { readStoredArray, writeStoredArray } from "./mongo";
 
 // JSON-file storage, mirroring the registrations store. Swap for a real DB later.
 
@@ -74,22 +73,12 @@ export interface Tournament {
   matches?: Match[];
 }
 
-const dataDir = path.join(process.cwd(), "data");
-const dataFile = path.join(dataDir, "tournaments.json");
-
 async function readAll(): Promise<Tournament[]> {
-  try {
-    const raw = await fs.readFile(dataFile, "utf8");
-    return JSON.parse(raw) as Tournament[];
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
-    throw error;
-  }
+  return readStoredArray<Tournament>("tournaments", "tournaments.json");
 }
 
 async function writeAll(items: Tournament[]): Promise<void> {
-  await fs.mkdir(dataDir, { recursive: true });
-  await fs.writeFile(dataFile, `${JSON.stringify(items, null, 2)}\n`, "utf8");
+  await writeStoredArray("tournaments", "tournaments.json", items);
 }
 
 export async function listTournaments(): Promise<Tournament[]> {

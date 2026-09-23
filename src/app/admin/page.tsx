@@ -5,6 +5,8 @@ import { listPlayers } from "@/lib/registrations";
 import { DashboardShell } from "@/components/DashboardShell";
 import { AdminDashboard } from "@/components/AdminDashboard";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminPage() {
   await seedAdmin();
 
